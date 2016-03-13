@@ -8,6 +8,9 @@ package com.rajeshsurana.singleton.reader;
 import com.rajeshsurana.AbstractReader.IFoodItemDataReader;
 import com.rajeshsurana.Concrete.FoodItem;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.util.ArrayList;
@@ -87,7 +90,7 @@ public class FoodItemXMLReader extends IFoodItemDataReader{
 
     @Override
     public void setFilePath(String fileName) {
-        String path = "";
+        /*String path = "";
         try {
             path = getPath(fileName);
             System.out.println(path);
@@ -95,7 +98,13 @@ public class FoodItemXMLReader extends IFoodItemDataReader{
             Logger.getLogger(FoodItemXMLReader.class.getName()).log(Level.SEVERE, null, ex);
         }
         this.filePath = path;
-
+        */
+        File f = new File(fileName);
+        if(f.exists() && !f.isDirectory()) { 
+            this.filePath = f.getAbsolutePath();
+        }else{
+            this.filePath = fileDirectorySetup(fileName);
+        }
         try{
             File fXmlFile = new File(this.filePath);
             DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
@@ -105,9 +114,12 @@ public class FoodItemXMLReader extends IFoodItemDataReader{
     	}catch(Exception e){
     		e.printStackTrace();
     	}
+
+        System.out.println(this.filePath);
     }
     
     public String getPath(String fileName) throws UnsupportedEncodingException {
+        
         String path = this.getClass().getClassLoader().getResource("").getPath();
         String fullPath = URLDecoder.decode(path, "UTF-8");
         String pathArr[] = fullPath.split("/WEB-INF/classes/");
@@ -133,6 +145,28 @@ public class FoodItemXMLReader extends IFoodItemDataReader{
         return reponsePath;
     }
     
+    public static String fileDirectorySetup(String fileName){
+        File file = new File(fileName);
+        
+        try {
+            file.createNewFile();
+        } catch (IOException ex) {
+            Logger.getLogger(FoodItemXMLReader.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        String initialContent = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n" +
+                                "<FoodItemData xmlns=\"http://cse564.asu.edu/PoxAssignment\">\n" +
+                                "</FoodItemData>";
+        try {
+            PrintWriter out = new PrintWriter(fileName);
+            out.println(initialContent);
+            out.close();
+            
+        } catch (FileNotFoundException ex) {
+            Logger.getLogger(FoodItemXMLReader.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return file.getAbsolutePath();
+    }
+    
     @Override
     public void setDoc(Document doc){
         this.doc = doc;
@@ -143,5 +177,5 @@ public class FoodItemXMLReader extends IFoodItemDataReader{
     public Document getDoc(){
         return doc;
     }
-    
+        
 }

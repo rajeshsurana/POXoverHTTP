@@ -9,7 +9,6 @@ import com.rajeshsurana.AbstractReader.IFoodItemDataReader;
 import com.rajeshsurana.Factory.FoodItemDataReaderFactory;
 import com.rajeshsurana.helper.StringDocConverter;
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -17,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
@@ -28,7 +27,6 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-import org.xml.sax.SAXException;
 
 /**
  *
@@ -36,7 +34,7 @@ import org.xml.sax.SAXException;
  */
 public class FoodItemProcessor {
     private String message;
-    private final String DataBasePath = "FoodItemDB.xml";
+    private final String DataBasePath = "FoodItemDB_1207633202.xml";
 
     public String getMessage() {
         return message;
@@ -87,12 +85,23 @@ public class FoodItemProcessor {
             lookup.put(name, list);
         }
         int max = 0;
+        int tryCount = 0;
         while(true){
             try{
-                max = Integer.parseInt(Collections.max(arrId));
+                if(arrId.size()>0){
+                    Collections.sort(arrId);                
+                    max = Integer.parseInt(arrId.get(arrId.size()-1));
+                }else{
+                    max = 0;
+                }
+                
                 break;
             } catch(Exception e){
                 e.printStackTrace();
+                if(tryCount > 5){
+                    max = 0; 
+                    break;
+                }
             }
         }
         List<String> maxList = new ArrayList<String>();
@@ -123,7 +132,7 @@ public class FoodItemProcessor {
         int maxId = Integer.parseInt(lookup.get("Max").get(0));
         for(int i=0; i < foodItemNodeList.getLength(); i++){
             Element foodItemNode = (Element)foodItemNodeList.item(i);
-            String name, category, country, description, price;
+            String name, category, country, description, price, id;
             try{
                 // name
                 name = foodItemNode.getElementsByTagName("name").item(0).getTextContent();
@@ -135,6 +144,13 @@ public class FoodItemProcessor {
                 description = foodItemNode.getElementsByTagName("description").item(0).getTextContent();
                 // price
                 price = foodItemNode.getElementsByTagName("price").item(0).getTextContent();
+                try{
+                    // id
+                    id = foodItemNode.getElementsByTagName("id").item(0).getTextContent();
+                }catch(Exception e){
+                    id = null;
+                }
+              
             }catch(Exception e){
                 return "<InvalidMessage xmlns=\"http://cse564.asu.edu/PoxAssignment\"/>";
             }
@@ -154,7 +170,14 @@ public class FoodItemProcessor {
                 }     
             }
             if(add){
-                maxId++;
+                int idInt;
+                if(id == null || id.isEmpty()){
+                    maxId++;
+                    idInt = maxId; 
+                }else{
+                    idInt = Integer.parseInt(id);
+                }
+                
                 // Add new food item to database
                 // fooditem
                 Element FoodItem = dbDoc.createElement("FoodItem");
@@ -165,7 +188,7 @@ public class FoodItemProcessor {
                 FoodItem.setAttributeNode(attr);
                 // add id
                 Element idNode = dbDoc.createElement("id");
-                idNode.appendChild(dbDoc.createTextNode(String.valueOf(maxId)));
+                idNode.appendChild(dbDoc.createTextNode(String.valueOf(idInt)));
                 FoodItem.appendChild(idNode);
                 // add name
                 Element nameNode = dbDoc.createElement("name");
@@ -186,7 +209,7 @@ public class FoodItemProcessor {
                 foodItemData.appendChild(FoodItem); 
                 
                 // Add appropriate response message
-                responseFoodItemAdded.append("  <FoodItemId>"+ String.valueOf(maxId) +"</FoodItemId>\n");
+                responseFoodItemAdded.append("  <FoodItemId>"+ String.valueOf(idInt) +"</FoodItemId>\n");
                 List<String> list = new ArrayList<String>();
                 list.add(category);
                 list.add(String.valueOf(maxId));
@@ -201,6 +224,8 @@ public class FoodItemProcessor {
             // write the content into xml file
             TransformerFactory transformerFactory = TransformerFactory.newInstance();
             Transformer transformer = transformerFactory.newTransformer();
+            transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+            transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
             DOMSource source = new DOMSource(dbDoc);
             String path = reader.getFilePath();
             StreamResult result = new StreamResult(new File(path));
